@@ -99,3 +99,16 @@ def update_product(request, pk):
     serializer = ProductSerializer(product, many=False)
 
     return Response(serializer.data)
+
+
+@api_view(["delete"])
+def delete_product(request, pk):
+    product = get_object_or_404(Product, id=pk)
+
+    images = ProductImages.objects.filter(product=product)
+
+    for i in images:
+        i.delete()
+
+    product.delete()
+    return Response({'details': 'Product is deleted'}, status=status.HTTP_204_NO_CONTENT)
