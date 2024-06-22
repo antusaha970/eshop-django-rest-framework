@@ -4,14 +4,17 @@ from rest_framework.response import Response
 from .models import Product
 from .serializers import ProductSerializer
 from django.shortcuts import get_object_or_404
+from .filters import ProductFilter
 # Create your views here.
 
 
 @api_view(["get"])
 def get_products(request):
 
-    products = Product.objects.all()
-    serializer = ProductSerializer(products, many=True)
+    filterset = ProductFilter(
+        request.GET, queryset=Product.objects.all().order_by("id"))
+
+    serializer = ProductSerializer(filterset.qs, many=True)
 
     return Response({'products': serializer.data})
 
