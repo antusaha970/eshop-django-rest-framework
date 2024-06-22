@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-6xw0vq$4w(af#amnjina)qb2&!p9$q3i452qc2dy6n$42w$4^2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -30,10 +30,9 @@ INSTALLED_APPS = [
     'django_filters',
 ]
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-#     'PAGE_SIZE': 100
-# }
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'e_shop.utils.custom_exception_handler.custom_exception_handler'
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
