@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from .models import Product
 from .serializers import ProductSerializer
 from django.shortcuts import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
 # Create your views here.
 
@@ -11,12 +12,25 @@ from .filters import ProductFilter
 @api_view(["get"])
 def get_products(request):
 
+    # filterset
     filterset = ProductFilter(
         request.GET, queryset=Product.objects.all().order_by("id"))
+    count = filterset.qs.count()
 
-    serializer = ProductSerializer(filterset.qs, many=True)
+    # pagination
+    resultPerPage = 10
+    paginator = PageNumberPagination()
+    paginator.page_size = resultPerPage
+    queryset = paginator.paginate_queryset(filterset.qs, request)
 
-    return Response({'products': serializer.data})
+    # serializer
+    serializer = ProductSerializer(queryset, many=True)
+
+    return Response({
+        'count': count,
+        'resultPerPage': resultPerPage,
+        'products': serializer.data
+    })
 
 
 @api_view(["get"])
