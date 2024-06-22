@@ -14,3 +14,12 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+        extra_kwargs = {
+            "name": {"required": True, },
+            "description": {"required": True, },
+            "price": {"required": True, },
+            "brand": {"required": True, },
+            "category": {"required": True, },
+            "rating": {"required": True, },
+            "stock": {"required": True, },
+        }

@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
 from rest_framework import status
+from django.shortcuts import get_object_or_404
 # Create your views here.
 
 
@@ -43,6 +44,19 @@ def get_product(request, pk):
     return Response({'product': serializer.data})
 
 
+@api_view(['post'])
+def make_product(request):
+    data = request.data
+    serializer = ProductSerializer(data=data)
+
+    if serializer.is_valid():
+        product = Product.objects.create(**data)
+        serializer = ProductSerializer(product, many=False)
+        return Response(serializer.data)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(["post"])
 def upload_product_image(request):
     product_id = request.data.get('product')
@@ -66,3 +80,22 @@ def upload_product_image(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["put"])
+def update_product(request, pk):
+    product = get_object_or_404(Product, id=pk)
+
+    product.name = request.data['name']
+    product.rating = request.data['rating']
+    product.description = request.data['description']
+    product.stock = request.data['stock']
+    product.price = request.data['price']
+    product.brand = request.data['brand']
+    product.category = request.data['category']
+
+    product.save()
+
+    serializer = ProductSerializer(product, many=False)
+
+    return Response(serializer.data)
