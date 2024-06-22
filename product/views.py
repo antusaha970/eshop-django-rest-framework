@@ -1,11 +1,12 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Product
-from .serializers import ProductSerializer
+from .models import Product, ProductImages
+from .serializers import ProductSerializer, ProductImageSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
+from rest_framework import status
 # Create your views here.
 
 
@@ -40,3 +41,28 @@ def get_product(request, pk):
     serializer = ProductSerializer(product)
 
     return Response({'product': serializer.data})
+
+
+@api_view(["post"])
+def upload_product_image(request):
+    product_id = request.data.get('product')
+    try:
+        product = Product.objects.get(pk=product_id)
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    images = request.FILES.getlist('images')
+    serializer_data = []  # Create a list to hold dictionaries
+
+    for image in images:
+        # Create a dictionary for each image
+        data = {'product': product.id, 'image': image}
+        serializer_data.append(data)
+
+    serializer = ProductImageSerializer(data=serializer_data, many=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
