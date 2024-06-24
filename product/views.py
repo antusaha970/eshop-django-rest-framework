@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Product, ProductImages
-from .serializers import ProductSerializer, ProductImageSerializer
+from .models import Product, ProductImages, Review
+from .serializers import ProductSerializer, ProductImageSerializer, ReviewSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import permission_classes
@@ -10,6 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 from .filters import ProductFilter
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db.models import Avg
 # Create your views here.
 
 
@@ -122,3 +125,78 @@ def delete_product(request, pk):
 
     product.delete()
     return Response({'details': 'Product is deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class ReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request, pk):
+        data = request.data
+        product = get_object_or_404(Product, id=pk)
+        user = request.user
+
+        isExist = product.reviews.filter(user=user).exists()
+        if isExist:
+            return Response({"error": "A review already exist"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            serializer = ReviewSerializer(data={'product': product.id, 'user': user.id, 'comment': data.get(
+                'comment', None), 'rating': data.get('rating', None)}, many=False)
+            if serializer.is_valid():
+                serializer.save()
+
+                rating = product.reviews.aggregate(
+                    avg_ratings=Avg('rating'))
+
+                product.rating = rating['avg_ratings']
+                product.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk=None):
+        user = request.user
+        data = request.data
+        isExist = Review.objects.filter(pk=pk).exists()
+        if isExist:
+            review = Review.objects.get(pk=pk)
+            if review.user != user:
+                return Response({"errors": "You don't have permission to update"}, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = ReviewSerializer(review, data=data, many=False)
+            if serializer.is_valid():
+                serializer.save()
+
+                product = Product.objects.get(pk=review.product.id)
+                rating = product.reviews.aggregate(
+                    avg_ratings=Avg('rating'))
+
+                product.rating = rating['avg_ratings']
+                product.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'errors': "No review exist with this user for this product"}, status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, pk=None):
+        review = get_object_or_404(Review, pk=pk)
+
+        user = request.user
+        if user != review.user:
+            return Response({"errors": "You don't have permission to Delete"}, status=status.HTTP_403_FORBIDDEN)
+
+        product = review.product
+        review.delete()
+
+        rating = product.reviews.aggregate(
+            avg_ratings=Avg('rating'))
+
+        if rating['avg_ratings'] is None:
+            rating['avg_ratings'] = 0
+        product.rating = rating['avg_ratings']
+        product.save()
+
+        return Response({"details": "Review deleted"}, status=status.HTTP_204_NO_CONTENT)
