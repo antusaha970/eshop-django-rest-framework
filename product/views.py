@@ -5,6 +5,8 @@ from .models import Product, ProductImages
 from .serializers import ProductSerializer, ProductImageSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 from .filters import ProductFilter
 from rest_framework import status
 from django.shortcuts import get_object_or_404
@@ -45,12 +47,13 @@ def get_product(request, pk):
 
 
 @api_view(['post'])
+@permission_classes([IsAuthenticated])
 def make_product(request):
     data = request.data
     serializer = ProductSerializer(data=data)
 
     if serializer.is_valid():
-        product = Product.objects.create(**data)
+        product = Product.objects.create(**data, user=request.user)
         serializer = ProductSerializer(product, many=False)
         return Response(serializer.data)
     else:
@@ -83,8 +86,12 @@ def upload_product_image(request):
 
 
 @api_view(["put"])
+@permission_classes([IsAuthenticated])
 def update_product(request, pk):
     product = get_object_or_404(Product, id=pk)
+
+    if product.user != request.user:
+        return Response({"error": "You are not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
     product.name = request.data['name']
     product.rating = request.data['rating']
@@ -102,8 +109,11 @@ def update_product(request, pk):
 
 
 @api_view(["delete"])
+@permission_classes([IsAuthenticated])
 def delete_product(request, pk):
     product = get_object_or_404(Product, id=pk)
+    if product.user != request.user:
+        return Response({"error": "You are not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
     images = ProductImages.objects.filter(product=product)
 

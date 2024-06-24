@@ -35,3 +35,22 @@ def current_user(request):
     user = request.user
     serializer = UserSerializer(user)
     return Response(serializer.data)
+
+
+@api_view(['put'])
+@permission_classes([IsAuthenticated])
+def update_user(request):
+    user = request.user
+    data = request.data
+
+    user.first_name = data["first_name"]
+    user.last_name = data["last_name"]
+    user.email = data["email"]
+    user.username = data["username"]
+
+    if data['password'] != "":
+        user.password = make_password(data["password"])
+
+    user.save()
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
