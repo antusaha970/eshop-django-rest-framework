@@ -6,6 +6,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
+from django.shortcuts import get_object_or_404
+from django.utils.crypto import get_random_string
+from datetime import datetime, timedelta
+from django.core.mail import send_mail
 # Create your views here.
 
 
@@ -54,3 +58,50 @@ def update_user(request):
     user.save()
     serializer = UserSerializer(user)
     return Response(serializer.data)
+
+
+def get_current_host(request):
+    protocol = request.is_secure() and "https" or "http"
+    host = request.get_host()
+    return f"{protocol}://{host}/"
+
+
+@api_view(["post"])
+def forgot_password(request):
+    data = request.data
+    user = get_object_or_404(User, email=data['email'])
+    token = get_random_string(40)
+    expire_date = datetime.now()+timedelta(minutes=30)
+
+    user.profile.reset_password_token = token
+    user.profile.reset_password_expire = expire_date
+
+    user.profile.save()
+
+    host = get_current_host(request)
+    link = f"{host}api/reset_password/{token}"
+    body = f"Your password reset link is: {link}"
+
+    send_mail("Password reset link", body, "noreply@ehop.com", [data['email']])
+
+    return Response({"details": "Password reset link send to your email address"})
+
+
+@api_view(['post'])
+def reset_password(request, token):
+    data = request.data
+    user = get_object_or_404(User, profile__reset_password_token=token)
+
+    if user.profile.reset_password_expire.replace(tzinfo=None) < datetime.now():
+        return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data['password'] != data["confirm_password"]:
+        return Response({"error": "Password did not match"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.password = make_password(data["password"])
+    user.profile.reset_password_token = ""
+    user.profile.reset_password_expire = None
+    user.save()
+    user.profile.save()
+
+    return Response({"details": "Password updated successfully"}, status=status.HTTP_200_OK)
