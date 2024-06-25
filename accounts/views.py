@@ -79,7 +79,7 @@ def forgot_password(request):
     user.profile.save()
 
     host = get_current_host(request)
-    link = f"{host}api/reset_password/{token}"
+    link = f"{host}api/reset_password/{token}/"
     body = f"Your password reset link is: {link}"
 
     send_mail("Password reset link", body, "noreply@ehop.com", [data['email']])

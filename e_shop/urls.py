@@ -10,6 +10,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('product.urls')),
     path('api/', include('accounts.urls')),
+    path('api/', include('orders.urls')),
     path("api/token/", TokenObtainPairView.as_view(), name="obtain_token")
 ]
 
