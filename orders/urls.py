@@ -6,4 +6,6 @@ urlpatterns = [
     path("orders/<str:pk>/", views.get_single_order),
     path("orders/<str:pk>/update", views.update_order),
     path("orders/<str:pk>/delete", views.delete_order),
+    path("order/webhook/", views.stripe_webhook),
+    path("create-checkout-session/", views.checkout_order),
 ]
